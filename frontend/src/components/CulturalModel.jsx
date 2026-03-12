@@ -4,12 +4,12 @@ export default function CultureModal({ culture, onClose }) {
   if (!culture) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white max-w-2xl w-full rounded-xl p-6 relative shadow-lg">
+    <div className="modal-overlay">
+      <div className="modal-card animate-fade-up">
 
         {/* Close Button */}
         <button
-          className="absolute top-3 right-3 text-xl"
+          className="absolute top-3 right-3 text-xl text-slate-400 hover:text-amber-300 transition"
           onClick={onClose}
         >
           ✖
@@ -25,17 +25,19 @@ export default function CultureModal({ culture, onClose }) {
         )}
 
         {/* Content */}
-        <h2 className="text-2xl font-bold mb-2">{culture.title}</h2>
+        <h2 className="text-2xl font-bold mb-2 text-amber-100">
+          {culture.title}
+        </h2>
 
-        <p className="text-gray-600 mb-2">
+        <p className="text-slate-300 mb-2">
           <strong>Country:</strong> {culture.country}
         </p>
 
-        <p className="text-gray-600 mb-4">
+        <p className="text-slate-300 mb-4">
           <strong>Category:</strong> {culture.category}
         </p>
 
-        <p className="text-gray-700 leading-relaxed">
+        <p className="text-slate-100 leading-relaxed">
           {culture.description}
         </p>
 

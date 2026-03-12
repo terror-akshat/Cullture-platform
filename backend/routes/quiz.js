@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Quiz = require('../models/Quiz');
 const QuizScore = require('../models/QuizScore');
+const auth = require('../middleware/auth');
 
 // Get all quiz questions
 router.get('/questions', async (req, res) => {
@@ -13,8 +14,8 @@ router.get('/questions', async (req, res) => {
   }
 });
 
-// Get random quiz questions
-router.get('/random/:count', async (req, res) => {
+// Get random quiz questions (protected)
+router.get('/random/:count', auth, async (req, res) => {
   try {
     const count = parseInt(req.params.count) || 5;
     const questions = await Quiz.aggregate([{ $sample: { size: count } }]);
@@ -24,14 +25,14 @@ router.get('/random/:count', async (req, res) => {
   }
 });
 
-// Submit quiz score
-router.post('/submit', async (req, res) => {
+// Submit quiz score (protected)
+router.post('/submit', auth, async (req, res) => {
   try {
-    const { userId, score, totalQuestions } = req.body;
+    const { score, totalQuestions } = req.body;
     const percentage = (score / totalQuestions) * 100;
 
     const quizScore = new QuizScore({
-      userId: userId || 'Anonymous',
+      userId: req.userId || 'Anonymous',
       score,
       totalQuestions,
       percentage

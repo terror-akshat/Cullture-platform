@@ -5,6 +5,8 @@ export const api = {
   register: () => API_BASE_URL + '/auth/register',
   login: () => API_BASE_URL + '/auth/login',
   getCurrentUser: () => API_BASE_URL + '/auth/me',
+  updateCurrentUser: () => API_BASE_URL + '/auth/me',
+  uploadAvatar: () => API_BASE_URL + '/auth/me/avatar',
 
   // Culture APIs
   getAllCultures: () => API_BASE_URL + '/cultures',

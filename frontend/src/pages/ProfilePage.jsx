@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../config';
+import { api, API_BASE_URL } from '../config';
 import CultureCard from '../components/CultureCard';
 
 export default function ProfilePage() {
@@ -12,6 +12,10 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState('posts');
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [savingAvatar, setSavingAvatar] = useState(false);
+  const [avatarMessage, setAvatarMessage] = useState('');
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -22,6 +26,7 @@ export default function ProfilePage() {
     
     const userData = JSON.parse(storedUser);
     setUser(userData);
+    setAvatarPreview(userData.avatarUrl || userData.avatar || '');
     fetchUserCultures(userData.id);
   }, [navigate]);
 
@@ -39,6 +44,9 @@ export default function ProfilePage() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    setUser(null);
+    setAvatarPreview('');
+    setAvatarFile(null);
     navigate('/');
     window.location.reload();
   };
@@ -91,52 +99,147 @@ export default function ProfilePage() {
     }
   };
 
+  const handleAvatarChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setAvatarFile(file);
+    setAvatarMessage('');
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreview(previewUrl);
+  };
+
+  const handleSaveAvatar = async () => {
+    if (!avatarFile) {
+      setAvatarMessage('Please select an image first.');
+      return;
+    }
+
+    try {
+      setSavingAvatar(true);
+      setAvatarMessage('');
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('avatar', avatarFile);
+
+      const response = await axios.post(api.uploadAvatar(), formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      const updatedUser = response.data.user || response.data;
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      setAvatarPreview(updatedUser.avatarUrl || updatedUser.avatar || avatarPreview);
+      setAvatarMessage('Profile photo updated successfully.');
+      setAvatarFile(null);
+    } catch (error) {
+      console.error('Error updating profile photo:', error);
+      setAvatarMessage('Failed to update profile photo. Please try again.');
+    } finally {
+      setSavingAvatar(false);
+    }
+  };
+
   if (loading) {
-    return <div className="container py-8 text-center">Loading profile...</div>;
+    return (
+      <div className="container py-8 text-center text-slate-300">
+        Loading profile...
+      </div>
+    );
   }
 
   if (!user) {
-    return <div className="container py-8 text-center">Please log in first</div>;
+    return (
+      <div className="container py-8 text-center text-slate-300">
+        Please log in first
+      </div>
+    );
   }
 
+  const getAvatarSrc = () => {
+    const raw =
+      avatarPreview ||
+      user.avatarUrl ||
+      user.avatar ||
+      'https://images.unsplash.com/photo-1545239351-1141bd82e8a6?auto=format&fit=crop&w=400&q=80';
+
+    if (raw.startsWith('http')) return raw;
+
+    // raw like "/avatars/filename.jpg" should be served from backend (without /api)
+    const apiBase = API_BASE_URL.replace('/api', '');
+    return `${apiBase}${raw}`;
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container">
+    <div className="min-h-screen bg-transparent py-8">
+      <div className="container animate-fade-up">
         {/* Profile Header */}
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
+        <div className="card p-8 mb-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <img
-                src="https://via.placeholder.com/120"
+                src={getAvatarSrc()}
                 alt={user.name}
-                className="w-24 h-24 rounded-full"
+                className="w-24 h-24 rounded-full border-4 border-amber-300/70 shadow-lg shadow-amber-500/40"
               />
               <div>
-                <h1 className="text-3xl font-bold mb-2">{user.name}</h1>
-                <p className="text-gray-600 mb-2">{user.email}</p>
-                <p className="text-sm text-gray-500">
+                <h1 className="text-3xl font-bold mb-2 text-amber-100">
+                  {user.name}
+                </h1>
+                <p className="text-slate-300 mb-2">{user.email}</p>
+                <p className="text-sm text-slate-400">
                   {cultures.length} cultural post{cultures.length !== 1 ? 's' : ''}
                 </p>
               </div>
             </div>
             <button
               onClick={handleLogout}
-              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition"
+              className="px-6 py-2 rounded-xl bg-rose-500/90 text-slate-50 font-semibold hover:bg-rose-400 transition shadow-md shadow-rose-500/40 hover:shadow-lg"
             >
               Logout
             </button>
           </div>
+
+            {/* Avatar uploader */}
+            <div className="mt-6 grid gap-3 md:max-w-md">
+              <label className="text-sm font-semibold text-slate-200">
+                Profile photo
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-amber-400 file:text-slate-950 file:font-semibold hover:file:bg-amber-300"
+              />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleSaveAvatar}
+                  disabled={savingAvatar}
+                  className="btn-primary disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {savingAvatar ? 'Saving...' : 'Save Profile Photo'}
+                </button>
+              </div>
+              {avatarMessage && (
+                <p className="text-xs text-slate-300 mt-1">
+                  {avatarMessage}
+                </p>
+              )}
+            </div>
         </div>
 
         {/* Tabs */}
         <div className="mb-8">
-          <div className="flex gap-4 border-b">
+          <div className="flex gap-4 border-b border-slate-700">
             <button
               onClick={() => setActiveTab('posts')}
               className={`px-6 py-3 font-semibold transition ${
                 activeTab === 'posts'
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-800'
+                  ? 'border-b-2 border-amber-400 text-amber-300'
+                  : 'text-slate-400 hover:text-slate-100'
               }`}
             >
               My Posts ({cultures.length})
@@ -153,7 +256,9 @@ export default function ProfilePage() {
                   <div key={culture._id} className="relative">
                     {editingId === culture._id ? (
                       <div className="card p-6">
-                        <h3 className="text-lg font-bold mb-3">Edit Post</h3>
+                        <h3 className="text-lg font-bold mb-3 text-amber-100">
+                          Edit Post
+                        </h3>
                         <input
                           type="text"
                           value={editData.title}
@@ -191,27 +296,31 @@ export default function ProfilePage() {
                           className="w-full h-48 object-cover"
                         />
                         <div className="p-4">
-                          <h3 className="text-lg font-bold mb-2">{culture.title}</h3>
-                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                          <h3 className="text-lg font-bold mb-2 text-amber-100">
+                            {culture.title}
+                          </h3>
+                          <p className="text-sm text-slate-300 mb-3 line-clamp-2">
                             {culture.description}
                           </p>
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleEdit(culture)}
-                              className="flex-1 px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-sm"
+                              className="flex-1 px-3 py-2 rounded-lg bg-amber-400 text-slate-950 font-semibold hover:bg-amber-300 transition text-sm"
                             >
                               Edit
                             </button>
                             <button
                               onClick={() => handleDelete(culture._id)}
-                              className="flex-1 px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition text-sm"
+                              className="flex-1 px-3 py-2 rounded-lg bg-rose-500 text-slate-50 hover:bg-rose-400 transition text-sm"
                             >
                               Delete
                             </button>
                           </div>
-                          <div className="mt-3 pt-3 border-t flex justify-between text-sm">
-                            <span className="text-gray-600">{culture.category}</span>
-                            <span className="text-gray-600">❤️ {culture.likes || 0}</span>
+                          <div className="mt-3 pt-3 border-t border-slate-700 flex justify-between text-sm">
+                            <span className="badge-pill">{culture.category}</span>
+                            <span className="text-slate-300">
+                              ❤️ {culture.likes || 0}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -220,11 +329,13 @@ export default function ProfilePage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 bg-white rounded-lg">
-                <p className="text-xl text-gray-600 mb-4">You haven't posted any cultures yet</p>
+              <div className="text-center py-12 card">
+                <p className="text-xl text-slate-200 mb-4">
+                  You haven't posted any cultures yet
+                </p>
                 <a
                   href="/add-culture"
-                  className="btn-primary inline-block text-white"
+                  className="btn-primary inline-block"
                 >
                   Create Your First Post
                 </a>

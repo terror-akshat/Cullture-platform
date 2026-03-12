@@ -2,7 +2,37 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
 const User = require('../models/User');
+const auth = require('../middleware/auth');
+
+// Ensure avatar upload directory exists
+const avatarDir = path.join(__dirname, '..', 'public', 'avatars');
+fs.mkdirSync(avatarDir, { recursive: true });
+
+// Multer storage for avatar uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, avatarDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, `${req.userId}-${Date.now()}${ext}`);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files are allowed'));
+    }
+    cb(null, true);
+  }
+});
 
 // Register
 router.post('/register', async (req, res) => {
@@ -53,7 +83,9 @@ router.post('/register', async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        bio: user.bio,
+        avatar: user.avatar
       }
     });
   } catch (error) {
@@ -95,7 +127,9 @@ router.post('/login', async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        bio: user.bio,
+        avatar: user.avatar
       }
     });
   } catch (error) {
@@ -128,6 +162,40 @@ router.get('/me', async (req, res) => {
     });
   } catch (error) {
     res.status(401).json({ message: 'Token is not valid' });
+  }
+});
+
+// Upload/update profile avatar
+router.post('/me/avatar', auth, upload.single('avatar'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const relativePath = `/avatars/${req.file.filename}`;
+
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { avatar: relativePath },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        bio: user.bio,
+        avatar: user.avatar
+      }
+    });
+  } catch (error) {
+    console.error('Error uploading avatar:', error);
+    res.status(500).json({ message: 'Failed to upload avatar' });
   }
 });
 

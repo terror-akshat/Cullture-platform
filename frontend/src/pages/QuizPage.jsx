@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../config';
 
 export default function QuizPage() {
+  const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [score, setScore] = useState(0);
@@ -12,9 +14,15 @@ export default function QuizPage() {
   const [leaderboard, setLeaderboard] = useState([]);
 
   useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) {
+      navigate('/login');
+      return;
+    }
+
     fetchQuizQuestions();
     fetchLeaderboard();
-  }, []);
+  }, [navigate]);
 
   const shuffleArray = (array) => {
     const shuffled = [...array];
@@ -47,7 +55,10 @@ export default function QuizPage() {
 
   const fetchQuizQuestions = async () => {
     try {
-      const response = await axios.get(api.getRandomQuestions(10));
+      const token = localStorage.getItem('token');
+      const response = await axios.get(api.getRandomQuestions(10), {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const processedQuestions = processQuestions(response.data);
       setQuestions(processedQuestions);
       setLoading(false);
@@ -89,11 +100,17 @@ export default function QuizPage() {
   const submitScore = async () => {
     try {
       const percentage = (score / questions.length) * 100;
-      await axios.post(api.submitQuizScore(), {
-        userId: 'User' + Math.random().toString(36).substr(2, 9),
-        score: score,
-        totalQuestions: questions.length
-      });
+      const token = localStorage.getItem('token');
+      await axios.post(
+        api.submitQuizScore(),
+        {
+          score: score,
+          totalQuestions: questions.length
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
       setShowScore(true);
       fetchLeaderboard();
     } catch (error) {
@@ -111,36 +128,50 @@ export default function QuizPage() {
   };
 
   if (loading) {
-    return <div className="container py-8 text-center">Loading quiz...</div>;
+    return (
+      <div className="container py-8 text-center text-slate-300">
+        Loading quiz...
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-8">
-      <div className="container">
-        <h1 className="text-4xl font-bold mb-8">🧠 Cultural Quiz</h1>
+    <div className="min-h-screen bg-transparent py-8">
+      <div className="container animate-fade-up">
+        <h1 className="text-4xl font-bold mb-8 text-amber-100">
+          🧠 Cultural Quiz
+        </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Quiz Section */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-lg p-8">
+            <div className="card p-8">
               {showScore ? (
                 <div className="text-center">
-                  <h2 className="text-3xl font-bold mb-4">Quiz Complete! 🎉</h2>
-                  <div className="text-5xl font-bold text-blue-600 mb-4">
+                  <h2 className="text-3xl font-bold mb-4 text-amber-100">
+                    Quiz Complete! 🎉
+                  </h2>
+                  <div className="text-5xl font-bold text-emerald-300 mb-4">
                     {score} / {questions.length}
                   </div>
-                  <p className="text-2xl mb-6">
+                  <p className="text-2xl mb-6 text-slate-200">
                     Score: {((score / questions.length) * 100).toFixed(1)}%
                   </p>
                   <div className="mb-6">
                     {((score / questions.length) * 100) >= 80 && (
-                      <p className="text-lg text-green-600">🏆 Excellent! You're a culture expert!</p>
+                      <p className="text-lg text-emerald-300">
+                        🏆 Excellent! You're a culture expert!
+                      </p>
                     )}
                     {((score / questions.length) * 100) >= 60 && ((score / questions.length) * 100) < 80 && (
-                      <p className="text-lg text-blue-600">👍 Good job! Keep learning!</p>
+                      <p className="text-lg text-amber-200">
+                        👍 Good job! Keep learning!
+                      </p>
                     )}
                     {((score / questions.length) * 100) < 60 && (
-                      <p className="text-lg text-orange-600">📚 Try again and learn more!</p>
+                      <p className="text-lg text-rose-300">
+                        📚 Try again and learn more!
+                      </p>
                     )}
                   </div>
                   <button onClick={restartQuiz} className="btn-primary">
@@ -152,28 +183,28 @@ export default function QuizPage() {
                   <div className="mb-6">
                     <div className="flex justify-between items-center mb-4">
                       <div>
-                        <span className="font-semibold text-lg">
+                        <span className="font-semibold text-lg text-slate-200">
                           Question {currentQuestion + 1} / {questions.length}
                         </span>
                       </div>
                       <div className="flex gap-4">
-                        <span className="font-semibold bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
+                        <span className="badge-pill">
                           Score: {score}
                         </span>
-                        <span className="text-sm text-gray-600">
+                        <span className="text-sm text-slate-300">
                           {answers.filter(a => a !== -1).length} answered
                         </span>
                       </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div className="w-full bg-slate-800 rounded-full h-3">
                       <div
-                        className="bg-gradient-to-r from-blue-600 to-purple-600 h-3 rounded-full transition-all duration-300"
+                        className="bg-gradient-to-r from-amber-400 via-rose-400 to-emerald-400 h-3 rounded-full transition-all duration-300"
                         style={{ width: `${((currentQuestion + 1) / questions.length) * 100}%` }}
                       ></div>
                     </div>
                   </div>
 
-                  <h3 className="text-2xl font-bold mb-8 text-gray-800">
+                  <h3 className="text-2xl font-bold mb-8 text-amber-100">
                     {questions[currentQuestion].question}
                   </h3>
 
@@ -189,17 +220,17 @@ export default function QuizPage() {
                           className={`w-full p-4 text-left rounded-lg border-2 transition transform hover:scale-105 ${
                             isSelected
                               ? isCorrect
-                                ? 'border-green-500 bg-green-50 shadow-lg'
-                                : 'border-red-500 bg-red-50 shadow-lg'
-                              : 'border-gray-300 bg-white hover:border-blue-400 hover:shadow-md'
+                                ? 'border-emerald-400 bg-emerald-900/40 shadow-lg'
+                                : 'border-rose-400 bg-rose-900/30 shadow-lg'
+                              : 'border-slate-600 bg-slate-900/80 hover:border-amber-400 hover:shadow-md'
                           }`}
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <span className="font-bold text-lg w-8 h-8 flex items-center justify-center rounded-full bg-gray-200">
+                              <span className="font-bold text-lg w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-amber-100">
                                 {String.fromCharCode(65 + index)}
                               </span>
-                              <span>{option}</span>
+                              <span className="text-slate-100">{option}</span>
                             </div>
                             {isSelected && (
                               <span className="text-xl">
@@ -216,7 +247,7 @@ export default function QuizPage() {
                     {currentQuestion > 0 && (
                       <button
                         onClick={() => setCurrentQuestion(currentQuestion - 1)}
-                        className="flex-1 px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+                        className="flex-1 px-6 py-2 bg-slate-700 text-slate-50 rounded-lg hover:bg-slate-600 transition"
                       >
                         ← Previous
                       </button>
@@ -253,31 +284,44 @@ export default function QuizPage() {
                   </div>
                 </div>
               ) : (
-                <p>No questions available</p>
+                <p className="text-slate-300">No questions available</p>
               )}
             </div>
           </div>
 
           {/* Leaderboard Section */}
-          <div className="bg-white rounded-lg shadow-lg p-6">
-            <h3 className="text-2xl font-bold mb-4">🏆 Top Scores</h3>
+          <div className="card p-6">
+            <h3 className="text-2xl font-bold mb-4 text-amber-100">
+              🏆 Top Scores
+            </h3>
             {leaderboard.length > 0 ? (
               <div className="space-y-3">
                 {leaderboard.map((entry, index) => (
-                  <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                  <div
+                    key={index}
+                    className="flex justify-between items-center p-3 bg-slate-900/70 rounded border border-slate-700"
+                  >
                     <div>
-                      <p className="font-semibold">#{index + 1}</p>
-                      <p className="text-sm text-gray-600">{entry.userId}</p>
+                      <p className="font-semibold text-amber-200">
+                        #{index + 1}
+                      </p>
+                      <p className="text-sm text-slate-300">{entry.userId}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-blue-600">{entry.score}</p>
-                      <p className="text-xs text-gray-600">{entry.percentage.toFixed(1)}%</p>
+                      <p className="font-bold text-emerald-300">
+                        {entry.score}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        {entry.percentage.toFixed(1)}%
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-gray-600">No scores yet. Be the first!</p>
+              <p className="text-slate-300">
+                No scores yet. Be the first!
+              </p>
             )}
           </div>
         </div>

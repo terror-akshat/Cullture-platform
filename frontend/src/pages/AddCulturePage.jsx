@@ -25,14 +25,17 @@ export default function AddCulturePage() {
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      const userData = JSON.parse(storedUser);
-      setUser(userData);
-      setFormData(prev => ({
-        ...prev,
-        createdBy: userData.name
-      }));
+    if (!storedUser) {
+      navigate('/login');
+      return;
     }
+
+    const userData = JSON.parse(storedUser);
+    setUser(userData);
+    setFormData(prev => ({
+      ...prev,
+      createdBy: userData.name
+    }));
   }, []);
 
   const handleChange = (e) => {
@@ -76,25 +79,29 @@ export default function AddCulturePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container max-w-lg">
-        <h1 className="text-4xl font-bold mb-8">✍️ Add Your Culture</h1>
+    <div className="min-h-screen bg-transparent py-8">
+      <div className="container max-w-lg animate-fade-up">
+        <h1 className="text-4xl font-bold mb-8 text-amber-100">
+          ✍️ Add Your Culture
+        </h1>
 
         {submitted && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+          <div className="card border border-emerald-400/50 text-emerald-200 px-4 py-3 rounded mb-6">
             ✓ Culture added successfully!
           </div>
         )}
 
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
+          <div className="card border border-rose-500/60 text-rose-200 px-4 py-3 rounded mb-6">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-lg p-8">
+        <form onSubmit={handleSubmit} className="card p-8">
           <div className="mb-4">
-            <label className="block text-sm font-semibold mb-2">Your Name</label>
+            <label className="block text-sm font-semibold mb-2 text-slate-200">
+              Your Name
+            </label>
             <input
               type="text"
               name="createdBy"
@@ -106,7 +113,9 @@ export default function AddCulturePage() {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-semibold mb-2">Country *</label>
+            <label className="block text-sm font-semibold mb-2 text-slate-200">
+              Country *
+            </label>
             <input
               type="text"
               name="country"
@@ -119,7 +128,9 @@ export default function AddCulturePage() {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-semibold mb-2">Region *</label>
+            <label className="block text-sm font-semibold mb-2 text-slate-200">
+              Region *
+            </label>
             <select
               name="region"
               value={formData.region}
@@ -135,7 +146,9 @@ export default function AddCulturePage() {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-semibold mb-2">Category *</label>
+            <label className="block text-sm font-semibold mb-2 text-slate-200">
+              Category *
+            </label>
             <select
               name="category"
               value={formData.category}
@@ -151,7 +164,9 @@ export default function AddCulturePage() {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-semibold mb-2">Title *</label>
+            <label className="block text-sm font-semibold mb-2 text-slate-200">
+              Title *
+            </label>
             <input
               type="text"
               name="title"
@@ -164,7 +179,9 @@ export default function AddCulturePage() {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-semibold mb-2">Description *</label>
+            <label className="block text-sm font-semibold mb-2 text-slate-200">
+              Description *
+            </label>
             <textarea
               name="description"
               value={formData.description}
@@ -177,7 +194,9 @@ export default function AddCulturePage() {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-semibold mb-2">Your Story</label>
+            <label className="block text-sm font-semibold mb-2 text-slate-200">
+              Your Story
+            </label>
             <textarea
               name="story"
               value={formData.story}
@@ -189,7 +208,9 @@ export default function AddCulturePage() {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-semibold mb-2">Image URL</label>
+            <label className="block text-sm font-semibold mb-2 text-slate-200">
+              Image URL
+            </label>
             <input
               type="url"
               name="image"
@@ -202,7 +223,7 @@ export default function AddCulturePage() {
 
           <button
             type="submit"
-            className="w-full btn-primary text-white font-semibold py-3"
+            className="w-full btn-primary font-semibold py-3"
           >
             Add Culture
           </button>
