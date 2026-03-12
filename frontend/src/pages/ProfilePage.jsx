@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { api, API_BASE_URL } from '../config';
-import CultureCard from '../components/CultureCard';
+import { getMediaUrl } from '../utils/media';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -40,6 +40,10 @@ export default function ProfilePage() {
       setLoading(false);
     }
   };
+
+  const getCultureVideoSrc = (culture) => getMediaUrl(culture.videoUrl);
+  const getCultureImageSrc = (culture) =>
+    getMediaUrl(culture.image) || 'https://via.placeholder.com/300';
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -291,7 +295,7 @@ export default function ProfilePage() {
                     ) : (
                       <div className="card">
                         <img
-                          src={culture.image}
+                          src={getCultureImageSrc(culture)}
                           alt={culture.title}
                           className="w-full h-48 object-cover"
                         />
@@ -302,6 +306,13 @@ export default function ProfilePage() {
                           <p className="text-sm text-slate-300 mb-3 line-clamp-2">
                             {culture.description}
                           </p>
+                          {getCultureVideoSrc(culture) && (
+                            <video
+                              src={getCultureVideoSrc(culture)}
+                              className="w-full rounded-lg mb-3 max-h-64 object-cover"
+                              controls
+                            />
+                          )}
                           <div className="flex gap-2">
                             <button
                               onClick={() => handleEdit(culture)}

@@ -33,6 +33,10 @@ const cultureSchema = new mongoose.Schema({
     type: String,
     default: 'https://via.placeholder.com/300'
   },
+  videoUrl: {
+    type: String,
+    default: ''
+  },
   likes: {
     type: Number,
     default: 0

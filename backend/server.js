@@ -8,7 +8,7 @@ const app = express();
 // Middleware
 app.use(
   cors({
-    origin: "https://culture-platform.netlify.app",
+    origin: "*",
   }),
 );
 app.use(express.json());

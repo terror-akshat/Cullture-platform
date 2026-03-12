@@ -19,6 +19,8 @@ export default function AddCulturePage() {
 
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [videoFile, setVideoFile] = useState(null);
+  const [videoLabel, setVideoLabel] = useState('');
 
   const regions = ['Asia', 'Europe', 'Africa', 'Americas', 'Oceania'];
   const categories = ['Festival', 'Food', 'Tradition', 'Other'];
@@ -46,17 +48,51 @@ export default function AddCulturePage() {
     }));
   };
 
+  const handleVideoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setVideoFile(null);
+      setVideoLabel('');
+      return;
+    }
+
+    // Limit short video size to ~10MB
+    const maxSizeBytes = 10 * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      setError('Video must be less than 10MB.');
+      setVideoFile(null);
+      setVideoLabel('');
+      e.target.value = '';
+      return;
+    }
+
+    setError('');
+    setVideoFile(file);
+    setVideoLabel(`${file.name} (${Math.ceil(file.size / 1024 / 1024)} MB)`);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
     try {
       const token = localStorage.getItem('token');
-      const config = token ? {
-        headers: { Authorization: `Bearer ${token}` }
-      } : {};
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-      await axios.post(api.createCulture(), formData, config);
+      const data = new FormData(e.currentTarget);
+      Object.entries(formData).forEach(([key, value]) => {
+        data.set(key, value);
+      });
+      if (videoFile) {
+        data.set('video', videoFile, videoFile.name);
+      }
+
+      await axios.post(api.createCulture(), data, {
+        headers: {
+          ...headers,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       setSubmitted(true);
       setFormData({
         country: '',
@@ -68,12 +104,14 @@ export default function AddCulturePage() {
         image: 'https://via.placeholder.com/300',
         createdBy: user?.name || 'Anonymous'
       });
+      setVideoFile(null);
+      setVideoLabel('');
       setTimeout(() => {
         setSubmitted(false);
         navigate('/explore');
       }, 2000);
     } catch (err) {
-      setError('Error adding culture. Please try again.');
+      setError(err.response?.data?.message || 'Error adding culture. Please try again.');
       console.error(err);
     }
   };
@@ -219,6 +257,24 @@ export default function AddCulturePage() {
               className="input-field"
               placeholder="https://example.com/image.jpg"
             />
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-semibold mb-2 text-slate-200">
+              Short Video (optional, max 10MB)
+            </label>
+            <input
+              type="file"
+              name="video"
+              accept="video/*"
+              onChange={handleVideoChange}
+              className="text-xs text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-amber-400 file:text-slate-950 file:font-semibold hover:file:bg-amber-300"
+            />
+            {videoLabel && (
+              <p className="mt-2 text-xs text-slate-300">
+                Selected: {videoLabel}
+              </p>
+            )}
           </div>
 
           <button

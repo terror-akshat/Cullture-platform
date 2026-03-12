@@ -2,6 +2,54 @@ const express = require('express');
 const router = express.Router();
 const Culture = require('../models/Culture');
 const jwt = require('jsonwebtoken');
+const path = require('path');
+const fs = require('fs');
+const multer = require('multer');
+
+// Ensure culture videos directory exists
+const cultureVideoDir = path.join(__dirname, '..', 'public', 'cultural');
+fs.mkdirSync(cultureVideoDir, { recursive: true });
+
+// Multer storage for culture videos
+const cultureVideoStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, cultureVideoDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.mp4';
+    cb(null, `culture-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+  }
+});
+
+// Multer instance for short culture videos (max ~10MB)
+const uploadCultureVideo = multer({
+  storage: cultureVideoStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith('video/')) {
+      return cb(new Error('Only video files are allowed'));
+    }
+    cb(null, true);
+  }
+});
+
+const handleVideoUpload = (req, res, next) => {
+  uploadCultureVideo.single('video')(req, res, (error) => {
+    if (!error) {
+      return next();
+    }
+
+    if (error instanceof multer.MulterError) {
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ message: 'Video must be less than 10MB.' });
+      }
+
+      return res.status(400).json({ message: error.message });
+    }
+
+    return res.status(400).json({ message: error.message || 'Video upload failed.' });
+  });
+};
 
 // Helper to get user ID from token
 const getUserIdFromToken = (req) => {
@@ -78,8 +126,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create new culture (with authentication)
-router.post('/', async (req, res) => {
+// Create new culture (with optional short video upload and authentication)
+router.post('/', handleVideoUpload, async (req, res) => {
   const userId = getUserIdFromToken(req);
 
   const culture = new Culture({
@@ -90,6 +138,7 @@ router.post('/', async (req, res) => {
     description: req.body.description,
     story: req.body.story,
     image: req.body.image || 'https://via.placeholder.com/300',
+    videoUrl: req.file ? `/cultural/${req.file.filename}` : '',
     userId: userId,
     createdBy: req.body.createdBy || 'Anonymous'
   });
