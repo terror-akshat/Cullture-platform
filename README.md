@@ -62,6 +62,12 @@ Cultural/
 - **🧠 Cultural Quiz** - Test your knowledge about world cultures
 - **👥 Community** - Connect with culture enthusiasts globally
 
+### Authentication Requirements
+- **Login required** to create a culture entry.
+- **Login required** to access quiz questions and submit scores.
+- Culture creation supports **short video upload (max 10MB)**; videos are now stored on Cloudinary and shared in the community.
+- Profile avatar uploads now also use Cloudinary; `avatarPublicId` is stored in MongoDB along with URL.
+
 ### Frontend Features
 - Responsive design optimized for mobile, tablet, and desktop
 - Real-time filtering by country, region, or category
@@ -120,12 +126,19 @@ MONGODB_URI=<database url>
 NODE_ENV=development
 ```
 
-4. Start MongoDB:
+4. Configure Cloudinary credentials in `.env`:
+```
+CLOUDINARY_CLOUD_NAME=<your-cloud-name>
+CLOUDINARY_API_KEY=<your-api-key>
+CLOUDINARY_API_SECRET=<your-api-secret>
+```
+
+5. Start MongoDB:
 ```bash
 mongod
 ```
 
-5. (Optional) Load sample data into MongoDB using `sampleData.js`
+6. (Optional) Load sample data into MongoDB using `sampleData.js`
 
 6. Start the backend server:
 ```bash

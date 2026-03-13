@@ -7,6 +7,7 @@ const fs = require('fs');
 const multer = require('multer');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
+const { cloudinary } = require('../cloudinary/cloudinary');
 
 // Ensure avatar upload directory exists
 const avatarDir = path.join(__dirname, '..', 'public', 'avatars');
@@ -172,11 +173,36 @@ router.post('/me/avatar', auth, upload.single('avatar'), async (req, res) => {
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const relativePath = `/avatars/${req.file.filename}`;
+    let avatarUrl = '';
+    let avatarPublicId = '';
+
+    const localFilePath = req.file.path;
+
+    try {
+      const uploadResult = await cloudinary.uploader.upload(localFilePath, {
+        resource_type: 'image',
+        folder: 'avatars',
+        use_filename: true,
+        unique_filename: true,
+        overwrite: true
+      });
+
+      avatarUrl = uploadResult.secure_url;
+      avatarPublicId = uploadResult.public_id;
+    } catch (uploadError) {
+      console.error('Cloudinary avatar upload failed:', uploadError);
+      fs.unlink(localFilePath, () => {});
+      return res.status(500).json({ message: 'Failed to upload avatar to Cloudinary' });
+    }
+
+    // Remove local file after successful upload
+    fs.unlink(localFilePath, (err) => {
+      if (err) console.warn('Failed to remove temporary avatar file', err);
+    });
 
     const user = await User.findByIdAndUpdate(
       req.userId,
-      { avatar: relativePath },
+      { avatar: avatarUrl, avatarPublicId },
       { new: true }
     );
 
@@ -190,7 +216,8 @@ router.post('/me/avatar', auth, upload.single('avatar'), async (req, res) => {
         name: user.name,
         email: user.email,
         bio: user.bio,
-        avatar: user.avatar
+        avatar: user.avatar,
+        avatarPublicId: user.avatarPublicId
       }
     });
   } catch (error) {

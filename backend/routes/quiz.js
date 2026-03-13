@@ -4,8 +4,8 @@ const Quiz = require('../models/Quiz');
 const QuizScore = require('../models/QuizScore');
 const auth = require('../middleware/auth');
 
-// Get all quiz questions
-router.get('/questions', async (req, res) => {
+// Get all quiz questions (protected)
+router.get('/questions', auth, async (req, res) => {
   try {
     const questions = await Quiz.find();
     res.json(questions);

@@ -1,5 +1,5 @@
-// export const API_BASE_URL = 'http://localhost:5000/api'; // for localhost
-export const API_BASE_URL = 'https://cullture-platform.onrender.com/api'; // for production
+export const API_BASE_URL = 'http://localhost:5000/api'; // for localhost
+// export const API_BASE_URL = 'https://cullture-platform.onrender.com/api'; // for production
 
 export const api = {
   // Auth APIs

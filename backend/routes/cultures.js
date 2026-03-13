@@ -1,16 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const Culture = require('../models/Culture');
-const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const auth = require('../middleware/auth');
+const { cloudinary } = require('../cloudinary/cloudinary');
 
-// Ensure culture videos directory exists
+// Ensure culture videos directory exists (temporary upload staging only)
 const cultureVideoDir = path.join(__dirname, '..', 'public', 'cultural');
 fs.mkdirSync(cultureVideoDir, { recursive: true });
 
-// Multer storage for culture videos
+// Multer storage for culture videos (temporary local cache before Cloudinary upload)
 const cultureVideoStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, cultureVideoDir);
@@ -49,18 +50,6 @@ const handleVideoUpload = (req, res, next) => {
 
     return res.status(400).json({ message: error.message || 'Video upload failed.' });
   });
-};
-
-// Helper to get user ID from token
-const getUserIdFromToken = (req) => {
-  try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    if (!token) return null;
-    const decoded = jwt.verify(token, 'your_jwt_secret_key_change_this');
-    return decoded.id;
-  } catch {
-    return null;
-  }
 };
 
 // Get all cultures
@@ -127,8 +116,37 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create new culture (with optional short video upload and authentication)
-router.post('/', handleVideoUpload, async (req, res) => {
-  const userId = getUserIdFromToken(req);
+router.post('/', auth, handleVideoUpload, async (req, res) => {
+  const userId = req.userId;
+
+  if (!userId) {
+    return res.status(401).json({ message: 'Authentication required to create culture' });
+  }
+
+  let videoUrl = '';
+  let videoPublicId = '';
+
+  if (req.file) {
+    try {
+      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+        resource_type: 'video',
+        folder: 'cultures',
+        use_filename: true,
+        unique_filename: true,
+        overwrite: false
+      });
+
+      videoUrl = uploadResult.secure_url;
+      videoPublicId = uploadResult.public_id;
+
+      // Remove local file after upload
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.warn('Failed to remove temporary video file', err);
+      });
+    } catch (err) {
+      return res.status(500).json({ message: 'Could not upload video to Cloudinary', error: err.message });
+    }
+  }
 
   const culture = new Culture({
     country: req.body.country,
@@ -138,8 +156,9 @@ router.post('/', handleVideoUpload, async (req, res) => {
     description: req.body.description,
     story: req.body.story,
     image: req.body.image || 'https://via.placeholder.com/300',
-    videoUrl: req.file ? `/cultural/${req.file.filename}` : '',
-    userId: userId,
+    videoUrl,
+    videoPublicId,
+    userId,
     createdBy: req.body.createdBy || 'Anonymous'
   });
 
@@ -153,12 +172,12 @@ router.post('/', handleVideoUpload, async (req, res) => {
 });
 
 // Update culture (only by owner)
-router.put('/:id', async (req, res) => {
+router.put('/:id', auth, async (req, res) => {
   try {
     const culture = await Culture.findById(req.params.id);
     if (!culture) return res.status(404).json({ message: 'Culture not found' });
 
-    const userId = getUserIdFromToken(req);
+    const userId = req.userId;
     
     // Check if user is the owner
     if (culture.userId && culture.userId.toString() !== userId) {
@@ -181,12 +200,12 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete culture (only by owner)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
   try {
     const culture = await Culture.findById(req.params.id);
     if (!culture) return res.status(404).json({ message: 'Culture not found' });
 
-    const userId = getUserIdFromToken(req);
+    const userId = req.userId;
     
     // Check if user is the owner
     if (culture.userId && culture.userId.toString() !== userId) {
